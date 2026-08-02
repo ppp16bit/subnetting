@@ -1,7 +1,9 @@
 # Subnetting
 
-A fast, interactive IPv4 subnet calculator for the terminal. Enter an address
-in CIDR notation and see the network details update as you type.
+A fast, interactive IPv4 subnet calculator and learning tool for the terminal.
+Enter an address in CIDR notation and see the network details update as you
+type. Optional panels explain the calculation without taking focus from the
+calculator.
 
 ![Subnetting calculator waiting for IPv4 input](screenshots/tui.png)
 
@@ -12,6 +14,8 @@ in CIDR notation and see the network details update as you type.
 - Broadcast address
 - First and last usable addresses
 - Number of usable hosts
+- The CIDR-to-mask calculation and containing subnet block
+- The bitwise AND that produces the network address
 
 ## Run
 
@@ -36,8 +40,16 @@ The calculation appears immediately:
 | Key | Action |
 | --- | --- |
 | Type | Enter or edit an IPv4/CIDR address |
+| `L` | Toggle the live step-by-step learning panel |
+| `B` | Toggle the binary visualization panel |
+| `?` | Toggle keyboard help |
+| `Q` | Quit |
 | `Esc` | Quit |
 | `Ctrl+C` | Quit |
+
+Panel state is kept for the duration of the session. On wide terminals the
+optional panels appear beside the calculator; on narrow terminals they stack
+below it.
 
 ## Build
 
