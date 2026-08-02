@@ -113,6 +113,7 @@ type panelID string
 const (
 	learningPanel panelID = "learning"
 	binaryPanel   panelID = "binary"
+	helpPanel     panelID = "help"
 )
 
 type Model struct {
@@ -179,6 +180,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case 'b', 'B':
 					m.panels = togglePanel(m.panels, binaryPanel)
 					return m, nil
+				case '?':
+					m.panels = togglePanel(m.panels, helpPanel)
+					return m, nil
 				case 'q', 'Q':
 					return m, tea.Quit
 				}
@@ -203,7 +207,15 @@ func (m Model) View() string {
 		m.renderInput(contentWidth),
 		m.renderWorkspace(contentWidth),
 	}
-	sections = append(sections, renderFooter(contentWidth, m.panels))
+	if panelEnabled(m.panels, helpPanel) {
+		if m.height > 0 && m.height < 32 {
+			sections = append(sections, renderCompactHelp(contentWidth))
+		} else {
+			sections = append(sections, renderHelp(contentWidth), renderFooter(contentWidth, m.panels))
+		}
+	} else {
+		sections = append(sections, renderFooter(contentWidth, m.panels))
+	}
 
 	app := lipgloss.JoinVertical(lipgloss.Left, sections...)
 	if m.width <= 0 {
@@ -647,14 +659,49 @@ func renderStat(item stat, width int) string {
 	return renderFrame(statStyle, width, content)
 }
 
+func renderHelp(width int) string {
+	items := []string{
+		keyStyle.Render("L") + hintStyle.Render(" toggle learning"),
+		keyStyle.Render("B") + hintStyle.Render(" toggle binary"),
+		keyStyle.Render("?") + hintStyle.Render(" close help"),
+		keyStyle.Render("Q") + hintStyle.Render(" quit"),
+	}
+	content := strings.Join(items, "   ")
+	if width < 70 {
+		content = lipgloss.JoinVertical(lipgloss.Left, items...)
+	}
+	return renderFrame(panelStyle, width, lipgloss.JoinVertical(
+		lipgloss.Left,
+		eyebrowStyle.Render("KEYBOARD HELP"),
+		"",
+		content,
+		hintStyle.Render("Input stays focused while panels open and close."),
+	))
+}
+
+func renderCompactHelp(width int) string {
+	if width < 50 {
+		return keyStyle.Render("L") + footerStyle.Render(" learn  ") +
+			keyStyle.Render("B") + footerStyle.Render(" bits  ") +
+			keyStyle.Render("?") + footerStyle.Render(" close  ") +
+			keyStyle.Render("Q") + footerStyle.Render(" quit")
+	}
+	return keyStyle.Render("L") + footerStyle.Render(" toggle learning   ") +
+		keyStyle.Render("B") + footerStyle.Render(" toggle binary   ") +
+		keyStyle.Render("?") + footerStyle.Render(" close help   ") +
+		keyStyle.Render("Q/Esc") + footerStyle.Render(" quit")
+}
+
 func renderFooter(width int, panels []panelID) string {
 	if width < 34 {
 		return keyStyle.Render("L") + footerStyle.Render("  ") +
 			keyStyle.Render("B") + footerStyle.Render("  ") +
+			keyStyle.Render("?") + footerStyle.Render("  ") +
 			keyStyle.Render("Q") + footerStyle.Render(" quit")
 	}
 	shortcuts := keyStyle.Render("L") + footerStyle.Render(" learn  ") +
 		keyStyle.Render("B") + footerStyle.Render(" binary  ") +
+		keyStyle.Render("?") + footerStyle.Render(" help  ") +
 		keyStyle.Render("Q") + footerStyle.Render(" quit")
 	if width < 54 {
 		return shortcuts
