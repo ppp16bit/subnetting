@@ -143,3 +143,17 @@ func Explain(info *SubnetInfo) LearningInfo {
 		BlockEnd:         blockEnd,
 	}
 }
+
+// BinaryIPv4 renders an IPv4 address as four zero-padded binary octets.
+func BinaryIPv4(address string) string {
+	ip := net.ParseIP(address).To4()
+	if ip == nil {
+		return ""
+	}
+
+	parts := make([]string, len(ip))
+	for i, octet := range ip {
+		parts[i] = fmt.Sprintf("%08b", octet)
+	}
+	return strings.Join(parts, ".")
+}

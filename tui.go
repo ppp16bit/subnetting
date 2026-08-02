@@ -99,12 +99,20 @@ var (
 
 	separatorStyle = lipgloss.NewStyle().
 			Foreground(subtle)
+
+	binaryNetworkStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(accent)
+
+	binaryHostStyle = lipgloss.NewStyle().
+			Foreground(muted)
 )
 
 type panelID string
 
 const (
 	learningPanel panelID = "learning"
+	binaryPanel   panelID = "binary"
 )
 
 type Model struct {
@@ -167,6 +175,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch msg.Runes[0] {
 				case 'l', 'L':
 					m.panels = togglePanel(m.panels, learningPanel)
+					return m, nil
+				case 'b', 'B':
+					m.panels = togglePanel(m.panels, binaryPanel)
 					return m, nil
 				case 'q', 'Q':
 					return m, tea.Quit
@@ -249,8 +260,13 @@ func (m Model) renderInput(width int) string {
 	field := promptStyle.Render("› ") + m.input.View()
 	field = renderFrame(inputFrameStyle, innerWidth, field)
 
+	if m.useCombinedLearningPanels() && m.height < 27 && width >= 78 {
+		content := eyebrowStyle.Render("NETWORK INPUT") + "  " + promptStyle.Render("› ") + m.input.View()
+		return renderFrame(inputFrameStyle, width, content)
+	}
+
 	parts := []string{heading, "", field}
-	if m.height > 0 && m.height < 27 {
+	if (m.height > 0 && m.height < 27) || m.useCombinedLearningPanels() {
 		parts = []string{heading, field}
 	}
 	return renderFrame(panelStyle, width, lipgloss.JoinVertical(lipgloss.Left, parts...))
@@ -265,18 +281,38 @@ func (m Model) renderWorkspace(width int) string {
 	const gap = 2
 	if width < 78 {
 		panels := []string{primary}
-		panels = append(panels, m.renderSidePanel(width))
+		for _, id := range []panelID{learningPanel, binaryPanel} {
+			if panelEnabled(m.panels, id) {
+				panels = append(panels, m.renderSidePanel(id, width))
+			}
+		}
 		return lipgloss.JoinVertical(lipgloss.Left, panels...)
 	}
 
 	primaryWidth := max(44, width*48/100)
 	railWidth := width - primaryWidth - gap
 	primary = m.renderFeedback(primaryWidth)
+	if m.useCombinedLearningPanels() && m.result != nil {
+		return lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			primary,
+			strings.Repeat(" ", gap),
+			renderCombinedLearningBinary(m.result, railWidth),
+		)
+	}
+
+	rail := make([]string, 0, 2)
+	for _, id := range []panelID{learningPanel, binaryPanel} {
+		if panelEnabled(m.panels, id) {
+			rail = append(rail, m.renderSidePanel(id, railWidth))
+		}
+	}
+
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		primary,
 		strings.Repeat(" ", gap),
-		m.renderSidePanel(railWidth),
+		lipgloss.JoinVertical(lipgloss.Left, rail...),
 	)
 }
 
@@ -312,27 +348,43 @@ func (m Model) renderFeedback(width int) string {
 	return renderFrame(style, width, "○  "+empty)
 }
 
-func (m Model) renderSidePanel(width int) string {
+func (m Model) renderSidePanel(id panelID, width int) string {
 	if m.result == nil {
+		title := "LEARNING"
+		if id == binaryPanel {
+			title = "BINARY"
+		}
 		message := "Waiting for a valid IPv4/CIDR address."
 		if m.err != nil {
 			message = "Fix the input to resume the live explanation."
 		}
 		content := lipgloss.JoinVertical(
 			lipgloss.Left,
-			eyebrowStyle.Render("LEARNING"),
+			eyebrowStyle.Render(title),
 			"",
 			hintStyle.Render(message),
 		)
 		return renderFrame(resultPanelStyle, width, content)
 	}
 
-	compact := m.height > 0 && m.height < 34
-	return renderLearning(m.result, width, compact)
+	switch id {
+	case learningPanel:
+		compact := m.height > 0 && (m.height < 34 || panelEnabled(m.panels, binaryPanel))
+		return renderLearning(m.result, width, compact)
+	case binaryPanel:
+		return renderBinary(m.result, width)
+	default:
+		return ""
+	}
 }
 
 func (m Model) hasSidePanels() bool {
-	return panelEnabled(m.panels, learningPanel)
+	return panelEnabled(m.panels, learningPanel) || panelEnabled(m.panels, binaryPanel)
+}
+
+func (m Model) useCombinedLearningPanels() bool {
+	return m.height > 0 && m.height < 36 &&
+		panelEnabled(m.panels, learningPanel) && panelEnabled(m.panels, binaryPanel)
 }
 
 type stat struct {
@@ -453,6 +505,110 @@ func formatStarts(starts []int) string {
 	return strings.Join(values, "  ")
 }
 
+func renderBinary(r *SubnetInfo, width int) string {
+	innerWidth := max(8, width-resultPanelStyle.GetHorizontalFrameSize())
+	if innerWidth < 35 {
+		rows := []string{
+			eyebrowStyle.Render("BINARY AND"),
+			compactBinaryRow("IP", BinaryIPv4(r.IP), r.CIDR, innerWidth),
+			compactBinaryRow("MASK", BinaryIPv4(r.Mask), r.CIDR, innerWidth),
+			compactBinaryRow("AND", BinaryIPv4(r.Network), r.CIDR, innerWidth),
+		}
+		return renderFrame(resultPanelStyle, width, lipgloss.JoinVertical(lipgloss.Left, rows...))
+	}
+
+	rows := []string{
+		eyebrowStyle.Render("BINARY AND"),
+		"",
+		binaryRow("IP", BinaryIPv4(r.IP), r.CIDR, innerWidth),
+		binaryRow("MASK", BinaryIPv4(r.Mask), r.CIDR, innerWidth),
+		separatorStyle.Render(strings.Repeat("─", innerWidth)),
+		binaryRow("NETWORK", BinaryIPv4(r.Network), r.CIDR, innerWidth),
+		"",
+		hintStyle.Render("network bits + host bits"),
+	}
+	return renderFrame(resultPanelStyle, width, lipgloss.JoinVertical(lipgloss.Left, rows...))
+}
+
+func renderCombinedLearningBinary(r *SubnetInfo, width int) string {
+	info := Explain(r)
+	innerWidth := max(8, width-resultPanelStyle.GetHorizontalFrameSize())
+	block := fmt.Sprintf("%d–%d", info.BlockStart, info.BlockEnd)
+	rows := []string{eyebrowStyle.Render("LEARNING + BINARY")}
+	rows = append(rows, compactLearningSteps(r, info, block, innerWidth)...)
+	rows = append(rows,
+		eyebrowStyle.Render("BINARY AND"),
+		compactBinaryRow("IP", BinaryIPv4(r.IP), r.CIDR, innerWidth),
+		compactBinaryRow("MASK", BinaryIPv4(r.Mask), r.CIDR, innerWidth),
+		compactBinaryRow("AND", BinaryIPv4(r.Network), r.CIDR, innerWidth),
+	)
+	return renderFrame(resultPanelStyle, width, lipgloss.JoinVertical(lipgloss.Left, rows...))
+}
+
+func compactBinaryRow(label, bits string, prefix, width int) string {
+	lines := strings.Split(formatBinary(bits, prefix, width), "\n")
+	if len(lines) == 0 {
+		return statLabelStyle.Render(label)
+	}
+	indent := strings.Repeat(" ", 6)
+	lines[0] = statLabelStyle.Render(fmt.Sprintf("%-6s", label)) + lines[0]
+	for i := 1; i < len(lines); i++ {
+		lines[i] = indent + lines[i]
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func binaryRow(label, bits string, prefix, width int) string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		statLabelStyle.Render(label),
+		formatBinary(bits, prefix, width),
+	)
+}
+
+func formatBinary(bits string, prefix, width int) string {
+	octets := strings.Split(bits, ".")
+	perLine := 4
+	if width < 35 {
+		perLine = 2
+	}
+	if width < 17 {
+		perLine = 1
+	}
+
+	lines := make([]string, 0, (len(octets)+perLine-1)/perLine)
+	for start := 0; start < len(octets); start += perLine {
+		end := min(len(octets), start+perLine)
+		line := strings.Join(octets[start:end], ".")
+		lineBits := (end - start) * 8
+		linePrefix := max(0, min(lineBits, prefix-start*8))
+		lines = append(lines, colorBinary(line, linePrefix))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func colorBinary(bits string, prefix int) string {
+	plainPosition := 0
+	var networkBits, hostBits strings.Builder
+	for _, char := range bits {
+		if char == '.' {
+			if plainPosition <= prefix {
+				networkBits.WriteRune(char)
+			} else {
+				hostBits.WriteRune(char)
+			}
+			continue
+		}
+		if plainPosition < prefix {
+			networkBits.WriteRune(char)
+		} else {
+			hostBits.WriteRune(char)
+		}
+		plainPosition++
+	}
+	return binaryNetworkStyle.Render(networkBits.String()) + binaryHostStyle.Render(hostBits.String())
+}
+
 func renderStatGrid(stats []stat, width int, twoColumns bool) string {
 	if !twoColumns {
 		rows := make([]string, 0, len(stats))
@@ -492,15 +648,28 @@ func renderStat(item stat, width int) string {
 }
 
 func renderFooter(width int, panels []panelID) string {
+	if width < 34 {
+		return keyStyle.Render("L") + footerStyle.Render("  ") +
+			keyStyle.Render("B") + footerStyle.Render("  ") +
+			keyStyle.Render("Q") + footerStyle.Render(" quit")
+	}
 	shortcuts := keyStyle.Render("L") + footerStyle.Render(" learn  ") +
+		keyStyle.Render("B") + footerStyle.Render(" binary  ") +
 		keyStyle.Render("Q") + footerStyle.Render(" quit")
-	if width < 42 {
+	if width < 54 {
 		return shortcuts
 	}
 
 	status := "Calculates as you type"
+	active := make([]string, 0, 2)
 	if panelEnabled(panels, learningPanel) {
-		status = "learning on"
+		active = append(active, "learning")
+	}
+	if panelEnabled(panels, binaryPanel) {
+		active = append(active, "binary")
+	}
+	if len(active) > 0 {
+		status = strings.Join(active, " + ") + " on"
 	}
 	statusView := footerStyle.Render(status)
 	gap := max(1, width-lipgloss.Width(statusView)-lipgloss.Width(shortcuts))
