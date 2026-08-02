@@ -20,6 +20,19 @@ type SubnetInfo struct {
 	UsableHosts uint64
 }
 
+// LearningInfo contains the intermediate values used to teach the subnet
+// calculation. It is derived from SubnetInfo so the explanation can never
+// drift away from the calculator result.
+type LearningInfo struct {
+	InterestingOctet int
+	IPOctet          int
+	MaskOctet        int
+	Increment        int
+	SubnetStarts     []int
+	BlockStart       int
+	BlockEnd         int
+}
+
 func ParseInput(input string) (net.IP, int, error) {
 	parts := strings.Split(input, "/")
 	if len(parts) != 2 {
@@ -33,7 +46,7 @@ func ParseInput(input string) (net.IP, int, error) {
 
 	ip = ip.To4()
 	if ip == nil {
-		return nil, 0, errors.New("only IPV4 address are suported")
+		return nil, 0, errors.New("only IPv4 addresses are supported")
 	}
 
 	cidr, err := strconv.Atoi(parts[1])
@@ -95,4 +108,38 @@ func ParseAndCalculate(input string) (*SubnetInfo, error) {
 		return nil, err
 	}
 	return Calculate(ip, cidr), nil
+}
+
+// Explain returns the decimal building blocks behind the subnet result. For
+// octet-boundary prefixes (for example /24), the following zero mask octet is
+// used because it makes the 256 - mask shortcut and the block explicit.
+func Explain(info *SubnetInfo) LearningInfo {
+	ip := net.ParseIP(info.IP).To4()
+	mask := net.ParseIP(info.Mask).To4()
+
+	octet := info.CIDR / 8
+	if octet > 3 {
+		octet = 3
+	}
+
+	ipOctet := int(ip[octet])
+	maskOctet := int(mask[octet])
+	increment := 256 - maskOctet
+	blockStart := (ipOctet / increment) * increment
+	blockEnd := min(255, blockStart+increment-1)
+
+	starts := make([]int, 0, 256/increment)
+	for start := 0; start < 256; start += increment {
+		starts = append(starts, start)
+	}
+
+	return LearningInfo{
+		InterestingOctet: octet + 1,
+		IPOctet:          ipOctet,
+		MaskOctet:        maskOctet,
+		Increment:        increment,
+		SubnetStarts:     starts,
+		BlockStart:       blockStart,
+		BlockEnd:         blockEnd,
+	}
 }
