@@ -22,7 +22,19 @@ calculator.
 Requires Go 1.26.3 or later.
 
 ```sh
-go run .
+go run ./cmd/subnetting
+```
+
+Color follows the terminal's ANSI palette, so the interface adapts to light,
+dark, high-contrast, and customized terminal themes without detecting a theme
+by name. The default mode enables color only when the output supports it and
+respects a non-empty `NO_COLOR` environment variable:
+
+```sh
+go run ./cmd/subnetting --color=auto
+go run ./cmd/subnetting --color=always
+go run ./cmd/subnetting --color=never
+NO_COLOR=1 go run ./cmd/subnetting
 ```
 
 Type an IPv4 address followed by its CIDR prefix:
@@ -56,7 +68,7 @@ below it.
 Create and run a standalone executable:
 
 ```sh
-go build -o subnetting .
+go build -o subnetting ./cmd/subnetting
 ./subnetting
 ```
 
