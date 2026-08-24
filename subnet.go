@@ -1,4 +1,4 @@
-package main
+package subnetting
 
 import (
 	"encoding/binary"
