@@ -21,6 +21,14 @@ calculator.
 
 Requires Go 1.26.3 or later.
 
+Run the application directly during development:
+
+```sh
+make run
+```
+
+The equivalent Go command is:
+
 ```sh
 go run ./cmd/subnetting
 ```
@@ -65,11 +73,61 @@ below it.
 
 ## Build
 
-Create and run a standalone executable:
+Create and run a standalone executable in `bin/subnetting`:
 
 ```sh
-go build -o subnetting ./cmd/subnetting
-./subnetting
+make build
+./bin/subnetting
+```
+
+The equivalent Go commands are:
+
+```sh
+mkdir -p bin
+go build -o bin/subnetting ./cmd/subnetting
+```
+
+## Development commands
+
+| Command | Purpose |
+| --- | --- |
+| `make run` | Run the application during development |
+| `make build` | Build `bin/subnetting` |
+| `make test` | Run all Go tests |
+| `make vet` | Analyze all packages with `go vet` |
+| `make fmt` | Format all Go packages |
+| `make install` | Install the command in `~/.local/bin` by default |
+| `make uninstall` | Remove the installed `subnetting` binary |
+| `make clean` | Remove the generated `bin/` directory |
+
+## Install
+
+Install `subnetting` for the current user:
+
+```sh
+make install
+```
+
+The default destination is `~/.local/bin/subnetting`. Override the directory
+when needed without changing `GOBIN` or `GOPATH`:
+
+```sh
+make install INSTALL_DIR="$HOME/bin"
+sudo make install INSTALL_DIR=/usr/local/bin
+```
+
+The Makefile does not invoke `sudo` or modify shell configuration. To run
+`subnetting` from any directory, ensure `~/.local/bin` is in `PATH`. For
+example:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Remove only the installed executable with:
+
+```sh
+make uninstall
 ```
 
 Only IPv4 addresses are supported.
