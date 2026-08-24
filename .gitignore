@@ -1,2 +1,2 @@
-subnet_test.go
-tui_test.go
+/subnetting
+*_test.go
