@@ -1,11 +1,11 @@
 # Subnetting
 
-A fast, interactive IPv4 subnet calculator and learning tool for the terminal.
+A fast, interactive IPv4 and IPv6 subnet calculator and learning tool for the terminal.
 Enter an address in CIDR notation and see the network details update as you
 type. Optional panels explain the calculation without taking focus from the
 calculator.
 
-![Subnetting calculator waiting for IPv4 input](screenshots/tui.png)
+![Subnetting calculator waiting for an IPv4 or IPv6 CIDR address](screenshots/tui-network-input.png)
 
 ## What it calculates
 
@@ -53,7 +53,49 @@ Type an IPv4 address followed by its CIDR prefix:
 
 The calculation appears immediately:
 
-![Subnetting calculator displaying results for 192.168.1.0/24](screenshots/input_ex.png)
+![IPv4 network details for 192.168.1.0/24](screenshots/ipv4-network-details.png)
+
+## Screenshots
+
+<details>
+<summary>IPv4: learning, binary visualization, and subnet splitting</summary>
+
+The learning panel explains the subnet mask and containing block for
+`192.168.1.0/24`.
+
+![IPv4 network details alongside the step-by-step learning panel](screenshots/ipv4-learning.png)
+
+The binary panel shows the bitwise AND between the address and subnet mask.
+
+![IPv4 address, mask, and network in binary](screenshots/ipv4-binary.png)
+
+Splitting `192.168.1.0/24` into `/32` prefixes produces 256 single-address subnets.
+
+![IPv4 subnet list showing /32 children of 192.168.1.0/24](screenshots/ipv4-subnet-splitting.png)
+
+</details>
+
+<details>
+<summary>IPv6: network details, learning, expanded addresses, and subnet splitting</summary>
+
+Network details for `fd00:1::/64` show compressed addresses, the inclusive range,
+and the exact total address count.
+
+![IPv6 network details for fd00:1::/64](screenshots/ipv6-network-details.png)
+
+The learning panel explains prefix bits, masking, and the address-count calculation.
+
+![IPv6 network details alongside the learning panel](screenshots/ipv6-learning.png)
+
+Expanded addresses and the 128-bit binary visualization illustrate the same network.
+
+![IPv6 learning panel with expanded addresses and binary masking](screenshots/ipv6-expanded-and-binary.png)
+
+The subnet list shows `/128` children of `fd00:1::/64`, with one address per subnet.
+
+![IPv6 subnet list showing /128 children of fd00:1::/64](screenshots/ipv6-subnet-splitting.png)
+
+</details>
 
 ## Controls
 
@@ -130,4 +172,4 @@ Remove only the installed executable with:
 make uninstall
 ```
 
-Only IPv4 addresses are supported.
+IPv4 and IPv6 addresses are supported.

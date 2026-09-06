@@ -1,10 +1,10 @@
-package subnetting
+package network
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 )
@@ -20,9 +20,6 @@ type SubnetInfo struct {
 	UsableHosts uint64
 }
 
-// LearningInfo contains the intermediate values used to teach the subnet
-// calculation. It is derived from SubnetInfo so the explanation can never
-// drift away from the calculator result.
 type LearningInfo struct {
 	InterestingOctet int
 	IPOctet          int
@@ -57,49 +54,15 @@ func ParseInput(input string) (net.IP, int, error) {
 }
 
 func Calculate(ip net.IP, cidr int) *SubnetInfo {
-	ipU32 := binary.BigEndian.Uint32(ip)
-	maskU32 := ^uint32(0) << (32 - cidr)
-	networkU32 := ipU32 & maskU32
-	broadcastU32 := ipU32 | ^maskU32
-	hostBits := 32 - cidr
-
-	var usable uint64
-	var firstUsabelStr, lastUsableStr string
-
-	if hostBits >= 2 {
-		usable = (uint64(1) << uint(hostBits)) - 2
-		firstIP := make(net.IP, 4)
-		binary.BigEndian.PutUint32(firstIP, networkU32+1)
-		firstUsabelStr = firstIP.String()
-
-		lastIP := make(net.IP, 4)
-		binary.BigEndian.PutUint32(lastIP, broadcastU32-1)
-		lastUsableStr = lastIP.String()
-	} else {
-		usable = 0
-		firstUsabelStr = "N/A"
-		lastUsableStr = "N/A"
+	addr, ok := netip.AddrFromSlice(ip)
+	if !ok || !addr.Unmap().Is4() {
+		return nil
 	}
-
-	maskIP := make(net.IP, 4)
-	binary.BigEndian.PutUint32(maskIP, maskU32)
-
-	networkIP := make(net.IP, 4)
-	binary.BigEndian.PutUint32(networkIP, networkU32)
-
-	broadcastIP := make(net.IP, 4)
-	binary.BigEndian.PutUint32(broadcastIP, broadcastU32)
-
-	return &SubnetInfo{
-		IP:          ip.String(),
-		CIDR:        cidr,
-		Mask:        maskIP.String(),
-		Network:     networkIP.String(),
-		Broadcast:   broadcastIP.String(),
-		FirstUsable: firstUsabelStr,
-		LastUsable:  lastUsableStr,
-		UsableHosts: usable,
+	info, err := CalculateNetwork(netip.PrefixFrom(addr.Unmap(), cidr))
+	if err != nil {
+		return nil
 	}
+	return info.IPv4
 }
 
 func ParseAndCalculate(input string) (*SubnetInfo, error) {
@@ -110,9 +73,6 @@ func ParseAndCalculate(input string) (*SubnetInfo, error) {
 	return Calculate(ip, cidr), nil
 }
 
-// Explain returns the decimal building blocks behind the subnet result. For
-// octet-boundary prefixes (for example /24), the following zero mask octet is
-// used because it makes the 256 - mask shortcut and the block explicit.
 func Explain(info *SubnetInfo) LearningInfo {
 	ip := net.ParseIP(info.IP).To4()
 	mask := net.ParseIP(info.Mask).To4()
@@ -144,7 +104,6 @@ func Explain(info *SubnetInfo) LearningInfo {
 	}
 }
 
-// BinaryIPv4 renders an IPv4 address as four zero-padded binary octets.
 func BinaryIPv4(address string) string {
 	ip := net.ParseIP(address).To4()
 	if ip == nil {
