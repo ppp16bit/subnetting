@@ -57,8 +57,7 @@ The calculation appears immediately:
 
 ## Screenshots
 
-<details>
-<summary>IPv4: learning, binary visualization, and subnet splitting</summary>
+### IPv4: learning, binary visualization, and subnet splitting
 
 The learning panel explains the subnet mask and containing block for
 `192.168.1.0/24`.
@@ -73,10 +72,7 @@ Splitting `192.168.1.0/24` into `/32` prefixes produces 256 single-address subne
 
 ![IPv4 subnet list showing /32 children of 192.168.1.0/24](screenshots/ipv4-subnet-splitting.png)
 
-</details>
-
-<details>
-<summary>IPv6: network details, learning, expanded addresses, and subnet splitting</summary>
+### IPv6: network details, learning, expanded addresses, and subnet splitting
 
 Network details for `fd00:1::/64` show compressed addresses, the inclusive range,
 and the exact total address count.
@@ -94,8 +90,6 @@ Expanded addresses and the 128-bit binary visualization illustrate the same netw
 The subnet list shows `/128` children of `fd00:1::/64`, with one address per subnet.
 
 ![IPv6 subnet list showing /128 children of fd00:1::/64](screenshots/ipv6-subnet-splitting.png)
-
-</details>
 
 ## Controls
 
